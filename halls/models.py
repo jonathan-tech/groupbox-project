@@ -1,8 +1,11 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class Hall(models.Model):
     title = models.CharField(max_length=250)
+    #the person that creates a hall of fame, we need to connect the user ovject to the hall object
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 class Video(models.Model):
     title = models.CharField(max_length=250)
