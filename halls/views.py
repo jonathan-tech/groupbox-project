@@ -5,6 +5,13 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login
 from .models import Hall, Video
 from .forms import VideoForm, SearchForm
+from django.http import Http404
+import urllib #we use this library to grab youtube id
+from django.forms.utils import ErrorList #error if we cant find youtube id
+import requests #for the url
+
+
+YOUTUBE_API_KEY = 'AIzaSyC4WM5tcYNraIjlHFxBizRLLD6hQjRWask'
 # Create your views here.
 def home(request):
     return render(request, 'halls/home.html')
@@ -13,8 +20,16 @@ def dashboard(request):
     return render(request, 'halls/dashboard.html')
 
 def add_video(request, pk):
+    '''
+    This function will add a video to our
+    hall
+    '''
     form = VideoForm()
     search_form = SearchForm()
+    hall = Hall.objects.get(pk=pk)
+    #if the all user and request user are different we dont want them to add a video
+    if not hall.user == request.user:
+        raise Http404 #error this is imported
 
     if request.method == 'POST':
         #create somthing
@@ -23,15 +38,29 @@ def add_video(request, pk):
         #will check if we have everything filled in
         if filled_form.is_valid():
             video = Video()
+            video.hall = hall
             #to get to its primed information
+            #this is what the user submitted
             video.url = filled_form.cleaned_data['url']
-            video.title = filled_form.cleaned_data['title']
-            video.youtube_id = filled_form.cleaned_data['youtube_id']
-            video.hall = Hall.objects.get(pk=pk)
-            video.save()
+            #this is what we want to look at
+            parsed_url = urllib.parse.urlparse(video.url)
+            #this line of code is getting the v parameter in the url
+            video_id =  urllib.parse.parse_qs(parsed_url.query).get('v')
+            #To varify that we got the proper id
+            if video_id:
+                #returns a list
+                video.youtube_id = video_id[0]
+                # this is the url we got form the youtube api
+                response = requests.get(f'https://www.googleapis.com/youtube/v3/videos?part=snippet&id={ video_id[0] }&key={ YOUTUBE_API_KEY }')
+                #we want to turn it to a json object
+                json = response.json()
+                title = json['items'][0]['snippet']['title']
+                print('title')
+                #video.title
+                #video.save()
 
 
-    return render(request, 'halls/add_video.html', {'form':form, 'search_form':search_form})
+    return render(request, 'halls/add_video.html', {'form':form, 'search_form':search_form, 'hall':hall})
 
 
 class SignUp(generic.CreateView):
