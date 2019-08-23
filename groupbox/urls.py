@@ -37,6 +37,8 @@ urlpatterns = [
     path('halloffame/<int:pk>/delete', views.DeleteHall.as_view(), name='delete_hall'),
     #videos
     path('halloffame/<int:pk>/addvideo', views.add_video, name='add_video'),
+    path('video/search', views.video_search, name='video_search'),
+
 
 ]
 #go and grab from our settings.py url and root. if someone does /static it will move to static directory

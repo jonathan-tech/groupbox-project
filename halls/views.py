@@ -5,7 +5,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login
 from .models import Hall, Video
 from .forms import VideoForm, SearchForm
-from django.http import Http404
+from django.http import Http404, JsonResponse #from the ajax portion addvideo html
 import urllib #we use this library to grab youtube id
 from django.forms.utils import ErrorList #error if we cant find youtube id
 import requests #for the url
@@ -34,14 +34,14 @@ def add_video(request, pk):
     if request.method == 'POST':
         #create somthing
         #going to take all the post data and fill it in to the form
-        filled_form = VideoForm(request.POST)
+        form = VideoForm(request.POST)
         #will check if we have everything filled in
-        if filled_form.is_valid():
+        if form.is_valid():
             video = Video()
             video.hall = hall
             #to get to its primed information
             #this is what the user submitted
-            video.url = filled_form.cleaned_data['url']
+            video.url = form.cleaned_data['url']
             #this is what we want to look at
             parsed_url = urllib.parse.urlparse(video.url)
             #this line of code is getting the v parameter in the url
@@ -55,13 +55,33 @@ def add_video(request, pk):
                 #we want to turn it to a json object
                 json = response.json()
                 title = json['items'][0]['snippet']['title']
-                print('title')
-                #video.title
-                #video.save()
+                video.title = title
+                video.save()
+                return redirect('detail_hall',pk)
+            else:
+                errors = form._errors.setdefault('url', ErrorList())
+                errors.append('Needs to be a youtube url')
 
 
     return render(request, 'halls/add_video.html', {'form':form, 'search_form':search_form, 'hall':hall})
 
+def video_search(request):
+    '''
+    the user types in information
+    passes over to this function
+    we return the infor and display.
+
+    what the user types goes from javascript
+    over to server
+    then sent back to the user interface
+
+    '''
+    search_form = SearchForm(request.GET)
+    if search_form.is_valid():
+        encoded_search_term = urllib.parse.quote(search_form.cleaned_data['search_term'])
+        response = requests.get(f'https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=5&q={encoded_search_term}&key={YOUTUBE_API_KEY}')
+        return JsonResponse(response.json())
+    return JsonResponse({'error':'Not working'})
 
 class SignUp(generic.CreateView):
     '''
