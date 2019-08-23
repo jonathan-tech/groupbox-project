@@ -83,6 +83,15 @@ def video_search(request):
         return JsonResponse(response.json())
     return JsonResponse({'error':'Not working'})
 
+class DeleteVideo(generic.DeleteView):
+    '''
+    The user is allowed delete a video
+    '''
+    model=Video #on the delete.html, it will pass the lowercase version of the model in this case 'hall'
+    template_name= 'halls/delete_video.html'
+    success_url = reverse_lazy('dashboard')
+
+
 class SignUp(generic.CreateView):
     '''
     Creates a form and passes it
