@@ -14,10 +14,14 @@ import requests #for the url
 YOUTUBE_API_KEY = 'AIzaSyC4WM5tcYNraIjlHFxBizRLLD6hQjRWask'
 # Create your views here.
 def home(request):
-    return render(request, 'halls/home.html')
+    recent_halls = Hall.objects.all().order_by('-id')[:3]
+    popular_halls = Hall.objects.get(pk=2),Hall.objects.get(pk=3),Hall.objects.get(pk=4)
+    return render(request, 'halls/home.html', {'recent_halls':recent_halls, 'popular_halls':popular_halls})
 
 def dashboard(request):
-    return render(request, 'halls/dashboard.html')
+    #find all the hall objects for a particular user
+    halls = Hall.objects.filter(user=request.user)
+    return render(request, 'halls/dashboard.html', {'halls':halls})
 
 def add_video(request, pk):
     '''
@@ -137,7 +141,7 @@ class CreateHall(generic.CreateView):
         form.instance.user = self.request.user
         #will validate user
         super(CreateHall, self).form_valid(form)
-        return redirect('home')
+        return redirect('dashboard')
 
 class DetailHall(generic.DetailView):
     '''
