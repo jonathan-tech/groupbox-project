@@ -9,20 +9,23 @@ from django.http import Http404, JsonResponse #from the ajax portion addvideo ht
 import urllib #we use this library to grab youtube id
 from django.forms.utils import ErrorList #error if we cant find youtube id
 import requests #for the url
-
+from django.contrib.auth.decorators import login_required #apply this to functions that should require a login.
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 YOUTUBE_API_KEY = 'AIzaSyC4WM5tcYNraIjlHFxBizRLLD6hQjRWask'
 # Create your views here.
 def home(request):
     recent_halls = Hall.objects.all().order_by('-id')[:3]
-    popular_halls = Hall.objects.get(pk=2),Hall.objects.get(pk=3),Hall.objects.get(pk=4)
+    popular_halls = Hall.objects.get(pk=1),Hall.objects.get(pk=2),Hall.objects.get(pk=3)
     return render(request, 'halls/home.html', {'recent_halls':recent_halls, 'popular_halls':popular_halls})
 
+@login_required
 def dashboard(request):
     #find all the hall objects for a particular user
     halls = Hall.objects.filter(user=request.user)
     return render(request, 'halls/dashboard.html', {'halls':halls})
 
+@login_required
 def add_video(request, pk):
     '''
     This function will add a video to our
@@ -69,6 +72,7 @@ def add_video(request, pk):
 
     return render(request, 'halls/add_video.html', {'form':form, 'search_form':search_form, 'hall':hall})
 
+@login_required
 def video_search(request):
     '''
     the user types in information
@@ -87,13 +91,19 @@ def video_search(request):
         return JsonResponse(response.json())
     return JsonResponse({'error':'Not working'})
 
-class DeleteVideo(generic.DeleteView):
+class DeleteVideo(LoginRequiredMixin, generic.DeleteView):
     '''
     The user is allowed delete a video
     '''
     model=Video #on the delete.html, it will pass the lowercase version of the model in this case 'hall'
     template_name= 'halls/delete_video.html'
     success_url = reverse_lazy('dashboard')
+
+    def get_object(self):
+        video = super(DeleteVideo, self).get_object()
+        if not video.hall.user == self.request.user:
+            raise Http404
+        return video
 
 
 class SignUp(generic.CreateView):
@@ -104,7 +114,7 @@ class SignUp(generic.CreateView):
     #this is what you need to create a user
     form_class = UserCreationForm
     #will send us bacj to home
-    success_url = reverse_lazy('home')
+    success_url = reverse_lazy('dashboard')
     #Driects to the signup page, we use 'form.as_p' for paragraph form to look cleaner
     template_name = 'registration/signup.html'
 
@@ -122,7 +132,7 @@ class SignUp(generic.CreateView):
         return view
 
 
-class CreateHall(generic.CreateView):
+class CreateHall(LoginRequiredMixin, generic.CreateView):
     '''
     This is where we are imporing
     create view code to make a new
@@ -153,7 +163,7 @@ class DetailHall(generic.DetailView):
     template_name= 'halls/detail_hall.html'
     #no success b
 
-class UpdateHall(generic.UpdateView):
+class UpdateHall(LoginRequiredMixin, generic.UpdateView):
     '''
     The user is allowed to make changes
     the hall
@@ -163,7 +173,13 @@ class UpdateHall(generic.UpdateView):
     fields=['title']
     success_url = reverse_lazy('dashboard')
 
-class DeleteHall(generic.DeleteView):
+    def get_object(self):
+        hall = super(UpdateHall, self).get_object()
+        if not hall.user == self.request.user:
+            raise Http404
+        return hall
+
+class DeleteHall(LoginRequiredMixin, generic.DeleteView):
     '''
     The user is allowed delete a hall
     '''
